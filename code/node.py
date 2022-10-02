@@ -1,22 +1,22 @@
-import socket
 import random
 from concurrent import futures
 import logging
+import socket
 from time import sleep
 
 import grpc
 import guessing_game_pb2
 import guessing_game_pb2_grpc
 
+num = 100000
 class GuessingGame(guessing_game_pb2_grpc.GuessingGameServicer):
+    global flag 
     def __init__(self):
-        self.number = random.randint(1, 4)
-        self.name = ''
+        self.number = random.randint(1, num)
+        print(f'Number is {self.number}')
         self.winner = 0
     def reply(self, request, context):
-        print(f'GuessingGame.GuessNumber called with {request}')
         if request.guess == self.number:
-            self.name = request.name
             self.winner += 1
             return guessing_game_pb2.Feedback(
                 feedback='You guessed correctly!')
@@ -29,55 +29,49 @@ class GuessingGame(guessing_game_pb2_grpc.GuessingGameServicer):
     def tell_name(self, request, context):
         if(self.winner == 1):
             print(f'{request.name} won the game!')
+            self.winner += 1
         return guessing_game_pb2.Name(name=request.name)
+    
 def server():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+  
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=15))
     guessing_game_pb2_grpc.add_GuessingGameServicer_to_server(GuessingGame(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
-    # try:
-    #     while True:
-    #         time.sleep(100)
-    # except:
-    #     server.stop(0)
-    
-    server.wait_for_termination()
+    server.wait_for_termination(100)
+   
     
 def Bob():
-    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
-    # used in circumstances in which the with statement does not fit the needs
-    # of the code.
-    sleep(50)
-    guess = random.randint(1, 4)
-    with grpc.insecure_channel('localhost:50051') as channel:
+    sleep(.5)
+    guess = random.randint(1, num)
+    with grpc.insecure_channel('server:50051') as channel:
         stub = guessing_game_pb2_grpc.GuessingGameStub(channel) # grpc send request to server
-        guess = random.randint(1, 4)
+        guess = random.randint(1, num)
         while True:
             response = stub.reply(guessing_game_pb2.Guess(guess=guess)) # grpc send request to server
-            print(f"Bob's guess: {guess}")
+            name = stub.tell_name(guessing_game_pb2.Name(name='Bob'))
+            print(f"Guess:           {guess}")
             if response.feedback == 'high':
-                guess = random.randint(1, guess)
+                guess = random.randint(1, guess-1)
             elif response.feedback == 'low':
-                guess = random.randint(guess, 4)
+                guess = random.randint(guess+1, num)
             else:
                 print('I am done!')
                 channel.close()
                 exit(0)
 def Alice():
-    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
-    # used in circumstances in which the with statement does not fit the needs
-    # of the code.
-    sleep(50)
-    guess = random.randint(1, 4)
-    with grpc.insecure_channel('localhost:50051') as channel:
+    sleep(.5)
+    guess = random.randint(1, num)
+    with grpc.insecure_channel('server:50051') as channel:
         stub = guessing_game_pb2_grpc.GuessingGameStub(channel) # grpc send request to server
         while True:
             response = stub.reply(guessing_game_pb2.Guess(guess=guess)) # grpc send request to server
-            print(f"Alice's guess: {guess}")
+            name = stub.tell_name(guessing_game_pb2.Name(name='Alice'))
+            print(f"Guess:           {guess}")
             if response.feedback == 'high':
-                guess = random.randint(1, guess)
+                guess = random.randint(1, guess-1)
             elif response.feedback == 'low':
-                guess = random.randint(guess, 4)
+                guess = random.randint(guess+1, num)
             else:
                 print('I am done!')
                 channel.close()
@@ -85,17 +79,11 @@ def Alice():
 # command line main
 if __name__ == '__main__':
     logging.basicConfig()
-    
-    print(socket.gethostname())
     if (socket.gethostname() == 'server'):
+        print(f'{socket.gethostname()} has started!')
         server()
     elif (socket.gethostname() == 'alice'):
         Alice()
     else:
         Bob()
-        
-# how do we make sure that the server is started before the client?
-# how do we stop the server after the client is done?
-# how do we stop client?
-        
 
