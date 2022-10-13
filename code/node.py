@@ -8,7 +8,7 @@ import grpc
 import guessing_game_pb2
 import guessing_game_pb2_grpc
 
-num = 100000
+num = 100
 class GuessingGame(guessing_game_pb2_grpc.GuessingGameServicer):
     global flag 
     def __init__(self):
@@ -33,16 +33,13 @@ class GuessingGame(guessing_game_pb2_grpc.GuessingGameServicer):
         return guessing_game_pb2.Name(name=request.name)
     
 def server():
-  
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=15))
     guessing_game_pb2_grpc.add_GuessingGameServicer_to_server(GuessingGame(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
-    server.wait_for_termination(100)
-   
+    server.wait_for_termination()
     
 def Bob():
-    sleep(.5)
     guess = random.randint(1, num)
     with grpc.insecure_channel('server:50051') as channel:
         stub = guessing_game_pb2_grpc.GuessingGameStub(channel) # grpc send request to server
@@ -60,7 +57,6 @@ def Bob():
                 channel.close()
                 exit(0)
 def Alice():
-    sleep(.5)
     guess = random.randint(1, num)
     with grpc.insecure_channel('server:50051') as channel:
         stub = guessing_game_pb2_grpc.GuessingGameStub(channel) # grpc send request to server

@@ -9,12 +9,16 @@ services:
       - default
   client1:
     build: .
+    depends_on:
+      - server
     hostname: alice
     container_name: Alice
     networks:
       - default
   client2:
     build: .
+    depends_on:
+      - server
     hostname: bob
     container_name: Bob
     networks:
